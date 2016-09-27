@@ -18,8 +18,10 @@
 #    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA  02110-1301 USA
 
 
+#  Please file bugs to https://github.com/matthiaskrgr/woptipng
+
 from multiprocessing import Pool
-import multiprocessing # cpu count,
+import multiprocessing # cpu count
 from PIL import Image as PIL # compare images
 import subprocess # launch advdef, optipng, imagemagick
 import os # os rename, niceness
@@ -40,11 +42,11 @@ DEBUG = args.debug
 INPATHS = args.inpath
 THRESHOLD = args.threshold
 MAX_THREADS = args.jobs
+
 os.nice(args.nice) # set niceness
 
 input_files=[]
 bad_input_files=[]
-
 
 
 print("Collecting files... ", end="")
@@ -52,7 +54,7 @@ for path in INPATHS: # iterate over arguments
     if (os.path.isfile(path)):   # inpath is a file
         if (path.split('.')[-1] == "png"): # and is \.png$
             input_files.append(path)
-        else: #not png?
+        else: # not png?
             bad_input_files.append(path)
     elif (os.path.isdir(path)):  # inpath is a directory
         for root, directories, filenames in os.walk(path):
@@ -96,7 +98,6 @@ def verify_images(image_before, image_after, transform):
         shutil.copy(image_after, image_before) # override tmp image with old image
         debugprint(("TRANSFORMATION unsuccessfull: + " + transform + ", REVERTING " + image_before))
 
-
 def run_imagemagick(image, tmpimage):
     shutil.copy(image, tmpimage)
     debugprint("imagemagick ")
@@ -122,8 +123,7 @@ def run_optipng(image, tmpimage):
     ]
     subprocess.call(cmd)
 
-
-def run_advdev(image, tmpimage):
+def run_advdef(image, tmpimage):
     debugprint("advdef")
     shutil.copy(image, tmpimage)
     compression_levels = [1, 2, 3, 4]
@@ -160,8 +160,8 @@ def optimize_image(image):
         run_optipng(image, tmpimage)
         verify_images(image, tmpimage, "optipng")
 
-        run_advdev(image, tmpimage)
-        verify_images(image, tmpimage, "advdev")
+        run_advdef(image, tmpimage)
+        verify_images(image, tmpimage, "advdef")
 
         size_after = os.path.getsize(image)
         size_delta = size_after - size_initial
@@ -169,7 +169,7 @@ def optimize_image(image):
 
     if (DEBUG and (size_initial < size_after)):
         debugprint("WARNING: " + str(image) + "got bigger !")
-    if os.path.isfile(tmpimage): #clean up
+    if os.path.isfile(tmpimage): # clean up
         os.remove(tmpimage)
 
     if (os.path.getsize(image) > size_initial) or (perc_delta*-1 < THRESHOLD) : # got bigger, or exceeds threshold
@@ -184,12 +184,11 @@ def optimize_image(image):
 p = Pool(MAX_THREADS)
 p.map(optimize_image, set(input_files))
 
-# done, print stats
-
+# update file_list
 for index, file_ in enumerate(file_list):
     file_list[index][2] = os.path.getsize(file_[0]) # write new filesize into list
 
-#obtain stats
+# obtain stats
 size_before = 0
 size_after = 0
 files_optimized = 0
@@ -198,7 +197,7 @@ for i in file_list:
         size_before += i[1]
         size_after += i[2]
         files_optimized += 1
-#print stats
+# print stats
 if (files_optimized):
     print(str(files_optimized) + " files optimized, " + str(size_before) + " bytes reduced to " + str(size_after) + " bytes; " + str(size_after - size_before) + " bytes, " + str((size_after - size_before)/(size_before)*100)[0:6] + "%")
     print("Optimization threshold was " + str(THRESHOLD) + "%")
