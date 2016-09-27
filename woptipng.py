@@ -49,18 +49,18 @@ bad_input_files=[]
 
 print("Collecting files... ", end="")
 for path in INPATHS: # iterate over arguments
-	if (os.path.isfile(path)):   # inpath is a file
-		if (path.split('.')[-1] == "png"): # and is \.png$
-			input_files.append(path) 
-		else: #not png?
-			bad_input_files.append(path)
-	elif (os.path.isdir(path)):  # inpath is a directory
-		for root, directories, filenames in os.walk(path): 
-			for filename in filenames:
-				if (filename.split('.')[-1] == "png"): # check for valid filetypes
-					input_files.append(os.path.join(root,filename)) # add to list
-	else: # path does not exist
-		bad_input_files.append(path)
+    if (os.path.isfile(path)):   # inpath is a file
+        if (path.split('.')[-1] == "png"): # and is \.png$
+            input_files.append(path)
+        else: #not png?
+            bad_input_files.append(path)
+    elif (os.path.isdir(path)):  # inpath is a directory
+        for root, directories, filenames in os.walk(path):
+            for filename in filenames:
+                if (filename.split('.')[-1] == "png"): # check for valid filetypes
+                    input_files.append(os.path.join(root,filename)) # add to list
+    else: # path does not exist
+        bad_input_files.append(path)
 
 bad_input_files.sort()
 input_files.sort()
@@ -68,115 +68,115 @@ input_files.sort()
 # get sizes
 file_list = []
 for file_ in input_files:
-	file_list.append([file_, os.path.getsize(file_), None])
+    file_list.append([file_, os.path.getsize(file_), None])
 
 print(" done")
 if (bad_input_files):
-	print("WARNING: can't handle following files:' ")
-	print(', '.join(bad_input_files) + "\n")
+    print("WARNING: can't handle following files:' ")
+    print(', '.join(bad_input_files) + "\n")
 
 
 
 print("Compressing " + str(len(file_list)) + " pngs...")
 
 def debugprint(arg):
-	if (DEBUG):
-		print(arg)
+    if (DEBUG):
+        print(arg)
 
 def images_identical(image1, image2):
-	return PIL.open(image1).tobytes() == PIL.open(image2).tobytes()
+    return PIL.open(image1).tobytes() == PIL.open(image2).tobytes()
 
 def verify_images(image_before, image_after, transform):
-	no_change = images_identical(image_before, image_after)
-	image_got_smaller = os.path.getsize(image_before) > os.path.getsize(image_after)
+    no_change = images_identical(image_before, image_after)
+    image_got_smaller = os.path.getsize(image_before) > os.path.getsize(image_after)
 
-	if (no_change and image_got_smaller):
-		os.rename(image_after, image_before) # move new image to old image
-	else: # we can't os.rename(image_after, image_before) because that would leave us with no source for the next transform
-		shutil.copy(image_after, image_before) # override tmp image with old image
-		debugprint(("TRANSFORMATION unsuccessfull: + " + transform + ", REVERTING " + image_before))
+    if (no_change and image_got_smaller):
+        os.rename(image_after, image_before) # move new image to old image
+    else: # we can't os.rename(image_after, image_before) because that would leave us with no source for the next transform
+        shutil.copy(image_after, image_before) # override tmp image with old image
+        debugprint(("TRANSFORMATION unsuccessfull: + " + transform + ", REVERTING " + image_before))
 
 
 def run_imagemagick(image, tmpimage):
-	shutil.copy(image, tmpimage)
-	debugprint("imagemagick ")
-	cmd = [ "convert",
-			"-strip",
-			"-define",
-			"png:color-type=6",
-			image,
-			tmpimage
-	]
-	subprocess.call(cmd)
+    shutil.copy(image, tmpimage)
+    debugprint("imagemagick ")
+    cmd = [ "convert",
+            "-strip",
+            "-define",
+            "png:color-type=6",
+            image,
+            tmpimage
+    ]
+    subprocess.call(cmd)
 
 def run_optipng(image, tmpimage):
-	debugprint("optipng...")
-	shutil.copy(image, tmpimage)
-	cmd = [ "optipng",
-			"-q",
-			"-o5",
-			"-nb",
-			"-nc",
-			"-np",
-			tmpimage
-	]
-	subprocess.call(cmd)
+    debugprint("optipng...")
+    shutil.copy(image, tmpimage)
+    cmd = [ "optipng",
+            "-q",
+            "-o5",
+            "-nb",
+            "-nc",
+            "-np",
+            tmpimage
+    ]
+    subprocess.call(cmd)
 
 
 def run_advdev(image, tmpimage):
-	debugprint("advdef")
-	shutil.copy(image, tmpimage)
-	compression_levels = [1, 2, 3, 4]
+    debugprint("advdef")
+    shutil.copy(image, tmpimage)
+    compression_levels = [1, 2, 3, 4]
 
-	for level in compression_levels:
-		cmd = [
-			"advdef",
-			"-z",
-			"-" + str(level),
-			tmpimage,
-		]
-		subprocess.call(cmd, stdout=open(os.devnull, 'w')) # discard stdout
+    for level in compression_levels:
+        cmd = [
+            "advdef",
+            "-z",
+            "-" + str(level),
+            tmpimage,
+        ]
+        subprocess.call(cmd, stdout=open(os.devnull, 'w')) # discard stdout
 
 
 def optimize_image(image):
-	size_initial = os.path.getsize(image)
-	with open(image, 'rb') as f:
-		initial_file_content = f.read()
+    size_initial = os.path.getsize(image)
+    with open(image, 'rb') as f:
+        initial_file_content = f.read()
 
 
-	size_initial = os.path.getsize(image)
-	it=0
-	size_after = 0
-	size_before = os.path.getsize(image)
-	while ((size_before > size_after) or (not it)):
-		it+=1
-		debugprint(("iteration " + str(it)))
-		size_before = os.path.getsize(image)
-		tmpimage  = image + ".tmp"
+    size_initial = os.path.getsize(image)
+    it=0
+    size_after = 0
+    size_before = os.path.getsize(image)
+    while ((size_before > size_after) or (not it)):
+        it+=1
+        debugprint(("iteration " + str(it)))
+        size_before = os.path.getsize(image)
+        tmpimage  = image + ".tmp"
 
-		run_imagemagick(image, tmpimage)
-		verify_images(image, tmpimage, "imagemagick")
+        run_imagemagick(image, tmpimage)
+        verify_images(image, tmpimage, "imagemagick")
 
-		run_optipng(image, tmpimage)
-		verify_images(image, tmpimage, "optipng")
+        run_optipng(image, tmpimage)
+        verify_images(image, tmpimage, "optipng")
 
-		run_advdev(image, tmpimage)
-		verify_images(image, tmpimage, "advdev")
+        run_advdev(image, tmpimage)
+        verify_images(image, tmpimage, "advdev")
 
-		size_after = os.path.getsize(image)
-		size_delta = size_after - size_initial
-		perc_delta = (size_delta/size_initial) *100
+        size_after = os.path.getsize(image)
+        size_delta = size_after - size_initial
+        perc_delta = (size_delta/size_initial) *100
 
-	if (DEBUG and (size_initial < size_after)):
-		debugprint("WARNING: " + str(image) + "got bigger !")
-	if os.path.isfile(tmpimage): #clean up
-		os.remove(tmpimage)
+    if (DEBUG and (size_initial < size_after)):
+        debugprint("WARNING: " + str(image) + "got bigger !")
+    if os.path.isfile(tmpimage): #clean up
+        os.remove(tmpimage)
 
-	if (os.path.getsize(image) > size_initial) or (perc_delta*-1 < THRESHOLD) : # got bigger, or exceeds threshold
-		with open(image, 'wb') as f: # write back original file
-			f.write(initial_file_content)
-	else:
-		print("optimized  " + str(image) + "  from " + str(size_initial) + " to " + str(size_after) + ", " + str(size_delta) + "b, " + str(perc_delta)[0:6] + "%")
+    if (os.path.getsize(image) > size_initial) or (perc_delta*-1 < THRESHOLD) : # got bigger, or exceeds threshold
+        with open(image, 'wb') as f: # write back original file
+            f.write(initial_file_content)
+    else:
+        print("optimized  " + str(image) + "  from " + str(size_initial) + " to " + str(size_after) + ", " + str(size_delta) + "b, " + str(perc_delta)[0:6] + "%")
 
 
 
@@ -187,20 +187,20 @@ p.map(optimize_image, set(input_files))
 # done, print stats
 
 for index, file_ in enumerate(file_list):
-	file_list[index][2] = os.path.getsize(file_[0]) # write new filesize into list
+    file_list[index][2] = os.path.getsize(file_[0]) # write new filesize into list
 
 #obtain stats
 size_before = 0
-size_after = 0 
+size_after = 0
 files_optimized = 0
 for i in file_list:
-	if i[1] > i[2]: # file got smaller
-		size_before += i[1]
-		size_after += i[2]
-		files_optimized += 1
+    if i[1] > i[2]: # file got smaller
+        size_before += i[1]
+        size_after += i[2]
+        files_optimized += 1
 #print stats
 if (files_optimized):
-	print(str(files_optimized) + " files optimized, " + str(size_before) + " bytes reduced to " + str(size_after) + " bytes; " + str(size_after - size_before) + " bytes, " + str((size_after - size_before)/(size_before)*100)[0:6] + "%")
-	print("Optimization threshold was " + str(THRESHOLD) + "%")
+    print(str(files_optimized) + " files optimized, " + str(size_before) + " bytes reduced to " + str(size_after) + " bytes; " + str(size_after - size_before) + " bytes, " + str((size_after - size_before)/(size_before)*100)[0:6] + "%")
+    print("Optimization threshold was " + str(THRESHOLD) + "%")
 else:
-	print("nothing optimized")
+    print("nothing optimized")
