@@ -199,7 +199,7 @@ for i in file_list:
         files_optimized += 1
 # print stats
 if (files_optimized):
-    print(str(files_optimized) + " files optimized, " + str(size_before) + " bytes reduced to " + str(size_after) + " bytes; " + str(size_after - size_before) + " bytes, " + str((size_after - size_before)/(size_before)*100)[0:6] + "%")
+    print(str(files_optimized) + " of " + str(len(file_list)) + " files optimized, " + str(size_before) + " bytes reduced to " + str(size_after) + " bytes; " + str(size_after - size_before) + " bytes, " + str((size_after - size_before)/(size_before)*100)[0:6] + "%")
     print("Optimization threshold was " + str(THRESHOLD) + "%")
 else:
     print("nothing optimized")
