@@ -92,7 +92,7 @@ def verify_images(image_before, image_after, transform):
 
 	if (no_change and image_got_smaller):
 		os.rename(image_after, image_before) # move new image to old image
-	else: # we cant os.rename(image_after, image_before) because that would leave us with not source for the next transform
+	else: # we can't os.rename(image_after, image_before) because that would leave us with no source for the next transform
 		shutil.copy(image_after, image_before) # override tmp image with old image
 		debugprint(("TRANSFORMATION unsuccessfull: + " + transform + ", REVERTING " + image_before))
 
@@ -124,7 +124,7 @@ def run_optipng(image, tmpimage):
 
 
 def run_advdev(image, tmpimage):
-	debugprint("advdev")
+	debugprint("advdef")
 	shutil.copy(image, tmpimage)
 	compression_levels = [1, 2, 3, 4]
 
@@ -135,7 +135,7 @@ def run_advdev(image, tmpimage):
 			"-" + str(level),
 			tmpimage,
 		]
-	subprocess.call(cmd, stdout=open(os.devnull, 'w')) # discard stdout
+		subprocess.call(cmd, stdout=open(os.devnull, 'w')) # discard stdout
 
 
 def optimize_image(image):
