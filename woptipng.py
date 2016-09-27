@@ -78,7 +78,7 @@ if (bad_input_files):
 
 
 
-print("Compressing pngs...")
+print("Compressing " + str(len(file_list)) + " pngs...")
 
 def debugprint(arg):
 	if (DEBUG):
