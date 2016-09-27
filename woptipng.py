@@ -54,7 +54,6 @@ for path in INPATHS: # iterate over arguments
 			input_files.append(path) 
 		else: #not png?
 			bad_input_files.append(path)
-		input_files.append(path) # add to list
 	elif (os.path.isdir(path)):  # inpath is a directory
 		for root, directories, filenames in os.walk(path): 
 			for filename in filenames:
@@ -73,7 +72,7 @@ for file_ in input_files:
 
 print(" done")
 if (bad_input_files):
-	print("WARNING: files not found: ")
+	print("WARNING: can't handle following files:' ")
 	print(', '.join(bad_input_files) + "\n")
 
 
