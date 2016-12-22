@@ -193,7 +193,7 @@ def optimize_image(image):
         with open(image, 'wb') as f: # write back original file
             f.write(initial_file_content)
     else:
-        print("optimized  " + str(image) + "  from " + str(size_initial) + " to " + str(size_after) + ", " + str(size_delta) + "b, " + str(perc_delta)[0:6] + "%")
+        print("optimized  {image}  from {size_initial} to {size_after}, {size_delta}b, {perc_delta}%".format(image=image, size_initial=size_initial, size_after=size_after, size_delta=size_delta, perc_delta=str(perc_delta)[0:6]))
 
 check_progs() # all tools available? if not: exit
 
@@ -216,7 +216,8 @@ for i in file_list:
         files_optimized += 1
 # print stats
 if (files_optimized):
-    print(str(files_optimized) + " of " + str(len(file_list)) + " files optimized, " + str(size_before) + " bytes reduced to " + str(size_after) + " bytes; " + str(size_after - size_before) + " bytes, " + str((size_after - size_before)/(size_before)*100)[0:6] + "%")
+    print("{files_optimized} of {files_processed} files optimized, {size_before} bytes reduced to {size_after} bytes; {size_diff} bytes, {percentage_delta}%".format(files_optimized = files_optimized, files_processed = len(file_list), size_before = size_before, size_after=size_after, size_diff = size_after - size_before, percentage_delta = str((size_after - size_before)/(size_before)*100)[0:6]))
+
     print("Optimization threshold was " + str(THRESHOLD) + "%")
 else:
-    print("nothing optimized")
+    print("Nothing optimized")
