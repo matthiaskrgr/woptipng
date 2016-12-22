@@ -96,6 +96,7 @@ def images_identical(image1, image2):
 def verify_images(source_img, new_img, transform):
     no_change = images_identical(source_img, new_img) # image pixels values remain unaltered, we want this
     image_got_smaller = os.path.getsize(source_img) > os.path.getsize(new_img)
+    debugprint("size reduction: " + str(os.path.getsize(source_img) - os.path.getsize(new_img)))
 
     if (no_change and image_got_smaller):
         os.rename(new_img, source_img) # move new image to old image // os.rename(src, dest)
