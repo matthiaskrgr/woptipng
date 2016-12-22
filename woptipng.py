@@ -27,6 +27,7 @@ import subprocess # launch advdef, optipng, imagemagick
 import os # os rename, niceness
 import shutil # copy files
 import argparse # argument parsing
+import sys # sys.exit
 
 
 parser = argparse.ArgumentParser()
@@ -42,6 +43,10 @@ DEBUG = args.debug
 INPATHS = args.inpath
 THRESHOLD = args.threshold
 MAX_THREADS = args.jobs
+# program executables
+EXEC_OPTIPNG = shutil.which("optipng")
+EXEC_IMAGEMAGICK = shutil.which("convert")
+EXEC_ADVDEF = shutil.which("advdef")
 
 os.nice(args.nice) # set niceness
 
@@ -52,7 +57,7 @@ bad_input_files=[]
 print("Collecting files... ", end="")
 for path in INPATHS: # iterate over arguments
     if (os.path.isfile(path)):   # inpath is a file
-        if (path.split('.')[-1] == "png"): # and is \.png$
+        if (path.endswith("png")):
             input_files.append(path)
         else: # not png?
             bad_input_files.append(path)
@@ -101,7 +106,7 @@ def verify_images(image_before, image_after, transform):
 def run_imagemagick(image, tmpimage):
     shutil.copy(image, tmpimage)
     debugprint("imagemagick ")
-    cmd = [ "convert",
+    cmd = [ EXEC_IMAGEMAGICK,
             "-strip",
             "-define",
             "png:color-type=6",
@@ -113,7 +118,7 @@ def run_imagemagick(image, tmpimage):
 def run_optipng(image, tmpimage):
     debugprint("optipng...")
     shutil.copy(image, tmpimage)
-    cmd = [ "optipng",
+    cmd = [ EXEC_OPTIPNG,
             "-q",
             "-o5",
             "-nb",
@@ -130,12 +135,23 @@ def run_advdef(image, tmpimage):
 
     for level in compression_levels:
         cmd = [
-            "advdef",
+            EXEC_ADVDEF,
             "-z",
             "-" + str(level),
             tmpimage,
         ]
         subprocess.call(cmd, stdout=open(os.devnull, 'w')) # discard stdout
+
+def check_progs():
+    if (not EXEC_ADVDEF):
+        print("ERROR: advdef binary not found!")
+    if (not EXEC_IMAGEMAGICK):
+        print("ERROR: imagemagick/convert binary not found!")
+    if (not EXEC_OPTIPNG):
+        print("ERROR: optipng not found!")
+
+    if not (EXEC_ADVDEF and EXEC_IMAGEMAGICK and EXEC_OPTIPNG):
+        sys.exit(1)
 
 
 def optimize_image(image):
@@ -178,7 +194,7 @@ def optimize_image(image):
     else:
         print("optimized  " + str(image) + "  from " + str(size_initial) + " to " + str(size_after) + ", " + str(size_delta) + "b, " + str(perc_delta)[0:6] + "%")
 
-
+check_progs() # all tools available? if not: exit
 
 # do the crushing
 p = Pool(MAX_THREADS)
