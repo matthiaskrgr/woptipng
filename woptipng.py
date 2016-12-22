@@ -93,15 +93,15 @@ def debugprint(arg):
 def images_identical(image1, image2):
     return PIL.open(image1).tobytes() == PIL.open(image2).tobytes()
 
-def verify_images(image_before, image_after, transform):
-    no_change = images_identical(image_before, image_after)
-    image_got_smaller = os.path.getsize(image_before) > os.path.getsize(image_after)
+def verify_images(source_img, new_img, transform):
+    no_change = images_identical(source_img, new_img) # image pixels values remain unaltered, we want this
+    image_got_smaller = os.path.getsize(source_img) > os.path.getsize(new_img)
 
     if (no_change and image_got_smaller):
-        os.rename(image_after, image_before) # move new image to old image
+        os.rename(new_img, source_img) # move new image to old image // os.rename(src, dest)
     else: # we can't os.rename(image_after, image_before) because that would leave us with no source for the next transform
-        shutil.copy(image_after, image_before) # override tmp image with old image
-        debugprint(("TRANSFORMATION unsuccessfull: + " + transform + ", REVERTING " + image_before))
+        shutil.copy(source_img, new_img) # override new image with old image // shutil.copy(src, dest)
+        debugprint(("TRANSFORMATION unsuccessfull: + " + transform + ", REVERTING " + source_img))
 
 def run_imagemagick(image, tmpimage):
     shutil.copy(image, tmpimage)
