@@ -57,14 +57,14 @@ bad_input_files=[]
 print("Collecting files... ", end="")
 for path in INPATHS: # iterate over arguments
     if (os.path.isfile(path)):   # inpath is a file
-        if (path.endswith("png")):
+        if (path.endswith(".png")):
             input_files.append(path)
         else: # not png?
             bad_input_files.append(path)
     elif (os.path.isdir(path)):  # inpath is a directory
         for root, directories, filenames in os.walk(path):
             for filename in filenames:
-                if (filename.split('.')[-1] == "png"): # check for valid filetypes
+                if (filename.endswith(".png")): # check for valid filetypes
                     input_files.append(os.path.join(root,filename)) # add to list
     else: # path does not exist
         bad_input_files.append(path)
