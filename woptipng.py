@@ -47,6 +47,8 @@ MAX_THREADS = args.jobs
 EXEC_OPTIPNG = shutil.which("optipng")
 EXEC_IMAGEMAGICK = shutil.which("convert")
 EXEC_ADVDEF = shutil.which("advdef")
+EXEC_OXIPNG = shutil.which("oxipng")
+
 
 os.nice(args.nice) # set niceness
 
@@ -143,6 +145,19 @@ def run_advdef(image, tmpimage):
         ]
         subprocess.call(cmd, stdout=open(os.devnull, 'w')) # discard stdout
 
+def run_oxipng(image, tmpimage):
+	debugprint("oxipng")
+	shutil.copy(image, tmpimage)
+	cmd = [
+		EXEC_OXIPNG,
+		"--nc",
+		"--np",
+		"-o6",
+		"--quiet",
+		tmpimage,
+	]
+	subprocess.call(cmd, stderr=open(os.devnull, 'w')) # discard stdout
+
 def check_progs():
     if (not EXEC_ADVDEF):
         print("ERROR: advdef binary not found!")
@@ -150,8 +165,10 @@ def check_progs():
         print("ERROR: imagemagick/convert binary not found!")
     if (not EXEC_OPTIPNG):
         print("ERROR: optipng not found!")
+    if (not EXEC_OXIPNG):
+        print("ERROR: oxipng not found!")
 
-    if not (EXEC_ADVDEF and EXEC_IMAGEMAGICK and EXEC_OPTIPNG):
+    if not (EXEC_ADVDEF and EXEC_IMAGEMAGICK and EXEC_OPTIPNG and EXEC_OXIPNG):
         sys.exit(1)
 
 
@@ -179,6 +196,9 @@ def optimize_image(image):
 
         run_advdef(image, tmpimage)
         verify_images(image, tmpimage, "advdef")
+
+        run_oxipng(image, tmpimage)
+        verify_images(image, tmpimage, "oxipng")
 
         size_after = os.path.getsize(image)
         size_delta = size_after - size_initial
