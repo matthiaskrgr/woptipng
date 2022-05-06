@@ -57,12 +57,29 @@ fn main() {
             .unwrap()
     );
 
+    assert_optimizers_are_available();
+
+    // optimize
     all_png_files
         .par_iter()
         .map(|file| Image::new(file))
         .for_each(|mut img| img.optimize());
 
-    assert_optimizers_are_available();
+    let total_file_size_after = all_png_files
+        .iter()
+        .flat_map(std::fs::metadata)
+        .map(|metadata| metadata.len())
+        .sum::<u64>();
+
+    println!(
+        "Reduced size of  {} files to a total size of: {}",
+        all_png_files.len(),
+        total_file_size_after
+            .file_size(options::CONVENTIONAL)
+            .unwrap()
+    );
+
+    println!("{}", total_file_size_after - total_file_size_before);
 }
 
 /// check that all input paths are present/valid, if not, terminate
@@ -119,7 +136,11 @@ impl<'a> Image<'a> {
     }
     fn run_imagemagick(&self, tmp_path: &PathBuf) -> bool {
         // copy files
-        std::fs::copy(&self.path, tmp_path).expect("failed to copy");
+        std::fs::copy(&self.path, tmp_path).expect(&format!(
+            "{} to {}",
+            &self.path.display(),
+            tmp_path.display()
+        ));
         let mut cmd = Command::new(exec_imagemagic);
         cmd.args(["-strip", "-define", "png:color-type=6"])
             .args([self.path, tmp_path]);
@@ -168,17 +189,18 @@ impl<'a> Image<'a> {
         let pixel_identical: bool = images_are_identical(self.path, new_image);
 
         let image_got_smaller: bool = std::fs::metadata(self.path).unwrap().len()
-            > std::fs::metadata(new_image).unwrap().len();
+            < std::fs::metadata(new_image).unwrap().len();
 
         match (pixel_identical, image_got_smaller) {
             (true, true) => {
                 std::fs::copy(new_image, self.path).unwrap();
             }
             (true, false) => {
-                println!("failed to optimiized")
+                //println!("failed to optimiized")
             }
             (false, true) => {
                 // image was altered, BAD; don't overwrite/rollback
+                println!("image altered! :(");
                 std::fs::copy(self.path, new_image).unwrap();
             }
             (false, false) => {
@@ -193,7 +215,10 @@ impl<'a> Image<'a> {
 
         let tmp_path = {
             let mut t = self.path.clone();
-            t.push(".tmp");
+            t.set_file_name(format!(
+                "{}_tmp.png",
+                &self.path.file_stem().unwrap().to_str().unwrap()
+            ));
             t
         };
 
