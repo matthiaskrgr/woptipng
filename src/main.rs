@@ -23,7 +23,7 @@ struct Args {
 
 static exec_optipng: &str = "optipng";
 static exec_imagemagic: &str = "convert";
-static exec_advdef: &str = "avdef";
+static exec_advpng: &str = "advpng";
 static exec_oxipng: &str = "oxipng";
 
 fn main() {
@@ -77,7 +77,7 @@ fn validate_input_paths(input_paths: &[PathBuf]) {
 
 // make sure all compression tools are available: optipng, imagemagick/convert, advdef, oxipng
 fn assert_optimizers_are_available() {
-    let arr = [exec_optipng, exec_imagemagic, exec_advdef, exec_oxipng];
+    let arr = [exec_optipng, exec_imagemagic, exec_advpng, exec_oxipng];
     let bad = arr.iter().find(|exe| {
         let mut cmd = Command::new(exe);
         !matches!(cmd.output().ok().map(|x| x.status.success()), Some(true))
