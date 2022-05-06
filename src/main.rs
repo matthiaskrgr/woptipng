@@ -1,8 +1,7 @@
 use clap::Parser;
 use humansize::{file_size_opts as options, FileSize};
-use image::{open, GenericImage, GenericImageView, ImageBuffer};
+use image::{open, GenericImageView};
 use rayon::prelude::*;
-use tempfile;
 use walkdir::WalkDir;
 
 use std::ffi::OsStr;
@@ -24,10 +23,10 @@ struct Args {
     paths: Vec<String>,
 }
 
-static exec_optipng: &str = "optipng";
-static exec_imagemagic: &str = "convert";
-static exec_advpng: &str = "advpng";
-static exec_oxipng: &str = "oxipng";
+static EXEC_OPTIPNG: &str = "optipng";
+static EXEC_IMAGEMAGIC: &str = "convert";
+static EXEC_ADVPNG: &str = "advpng";
+static EXEC_OXIPNG: &str = "oxipng";
 
 fn main() {
     let cli = Args::parse();
@@ -62,7 +61,7 @@ fn main() {
     // optimize
     all_png_files
         .par_iter()
-        .map(|file| Image::new(file))
+        .map(Image::new)
         .for_each(|mut img| img.optimize());
 
     let total_file_size_after = all_png_files
@@ -102,7 +101,7 @@ fn validate_input_paths(input_paths: &[PathBuf]) {
 
 // make sure all compression tools are available: optipng, imagemagick/convert, advdef, oxipng
 fn assert_optimizers_are_available() {
-    let arr = [exec_optipng, exec_imagemagic, exec_advpng, exec_oxipng];
+    let arr = [EXEC_OPTIPNG, EXEC_IMAGEMAGIC, EXEC_ADVPNG, EXEC_OXIPNG];
     let bad = arr.iter().find(|exe| {
         let mut cmd = Command::new(exe);
         !matches!(
@@ -131,8 +130,8 @@ struct Image<'a> {
 }
 
 impl<'a> Image<'a> {
-    fn new(imgpath: &'a PathBuf) -> Self {
-        Image { path: &imgpath }
+    fn new(path: &'a PathBuf) -> Self {
+        Image { path }
     }
     fn run_imagemagick(&self, tmp_path: &PathBuf) -> bool {
         // copy files
@@ -141,7 +140,7 @@ impl<'a> Image<'a> {
             &self.path.display(),
             tmp_path.display()
         ));
-        let mut cmd = Command::new(exec_imagemagic);
+        let mut cmd = Command::new(EXEC_IMAGEMAGIC);
         cmd.args(["-strip", "-define", "png:color-type=6"])
             .args([self.path, tmp_path]);
 
@@ -152,7 +151,7 @@ impl<'a> Image<'a> {
     fn run_optipng(&self, tmp_path: &PathBuf) -> bool {
         // copy files
         std::fs::copy(&self.path, tmp_path).expect("failed to copy");
-        let mut cmd = Command::new(exec_optipng);
+        let mut cmd = Command::new(EXEC_OPTIPNG);
         cmd.args(["-q", "-o5", "-nb", "-nc", "-np"]).arg(tmp_path);
 
         // do not discard output
@@ -165,20 +164,20 @@ impl<'a> Image<'a> {
         let v = COMPRESSION_LEVELS
             .iter()
             .map(|lvl| {
-                let mut cmd = Command::new(exec_advpng);
+                let mut cmd = Command::new(EXEC_ADVPNG);
                 cmd.arg("-z").arg(format!("-{}", lvl)).arg(tmp_path);
                 // discard output
                 cmd.output().unwrap().status.success()
             })
             .collect::<Vec<bool>>();
 
-        v.into_iter().all(|v| v == true)
+        v.into_iter().all(|v| v)
     }
 
     fn run_oxipng(&self, tmp_path: &PathBuf) -> bool {
         // copy files
         std::fs::copy(&self.path, tmp_path).expect("failed to copy");
-        let mut cmd = Command::new(exec_oxipng);
+        let mut cmd = Command::new(EXEC_OXIPNG);
         cmd.args(["--nc", "--np", "-o6", "--quiet"]).arg(tmp_path);
 
         // discard output
