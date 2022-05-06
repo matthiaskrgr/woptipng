@@ -81,7 +81,10 @@ fn assert_optimizers_are_available() {
     let arr = [exec_optipng, exec_imagemagic, exec_advpng, exec_oxipng];
     let bad = arr.iter().find(|exe| {
         let mut cmd = Command::new(exe);
-        !matches!(cmd.output().ok().map(|x| x.status.success()), Some(true))
+        !matches!(
+            cmd.arg("--help").output().ok().map(|x| x.status.success()),
+            Some(true)
+        )
     });
     if let Some(not_found) = bad {
         eprintln!("could not find executable for {}", not_found);
