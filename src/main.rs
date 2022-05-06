@@ -4,6 +4,7 @@ use walkdir::WalkDir;
 
 use std::ffi::OsStr;
 use std::path::PathBuf;
+use std::process::Command;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -19,6 +20,11 @@ struct Args {
 
     paths: Vec<String>,
 }
+
+static exec_optipng: &str = "optipng";
+static exec_imagemagic: &str = "convert";
+static exec_advdef: &str = "avdef";
+static exec_oxipng: &str = "oxipng";
 
 fn main() {
     let cli = Args::parse();
@@ -47,6 +53,8 @@ fn main() {
             .file_size(options::CONVENTIONAL)
             .unwrap()
     );
+
+    assert_optimizers_are_available();
 }
 
 /// check that all input paths are present/valid, if not, terminate
@@ -64,5 +72,18 @@ fn validate_input_paths(input_paths: &[PathBuf]) {
         std::process::exit(1);
     } else {
         eprintln!("no <path> argument supplied. try '.' for current directory");
+    }
+}
+
+// make sure all compression tools are available: optipng, imagemagick/convert, advdef, oxipng
+fn assert_optimizers_are_available() {
+    let arr = [exec_optipng, exec_imagemagic, exec_advdef, exec_oxipng];
+    let bad = arr.iter().find(|exe| {
+        let mut cmd = Command::new(exe);
+        !matches!(cmd.output().ok().map(|x| x.status.success()), Some(true))
+    });
+    if let Some(not_found) = bad {
+        eprintln!("could not find executable for {}", not_found);
+        std::process::exit(2);
     }
 }
