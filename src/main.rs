@@ -1,5 +1,6 @@
 use clap::Parser;
 use humansize::{file_size_opts as options, FileSize};
+use image::{open, GenericImage, GenericImageView, ImageBuffer};
 use walkdir::WalkDir;
 
 use std::ffi::OsStr;
@@ -86,4 +87,14 @@ fn assert_optimizers_are_available() {
         eprintln!("could not find executable for {}", not_found);
         std::process::exit(2);
     }
+}
+
+fn images_are_identical(image1: &PathBuf, image2: &PathBuf) -> bool {
+    let image_1 = open(image1).unwrap();
+    let pixels_1 = image_1.pixels();
+
+    let image_2 = open(image2).unwrap();
+    let pixels_2 = image_2.pixels();
+
+    pixels_1.eq(pixels_2)
 }
