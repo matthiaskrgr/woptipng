@@ -1,5 +1,6 @@
 use clap::Parser;
 use clap::{AppSettings, Arg, ArgMatches};
+use humansize::{file_size_opts as options, FileSize};
 use walkdir::WalkDir;
 
 use std::ffi::OsStr;
@@ -36,7 +37,20 @@ fn main() {
         .filter(|file| file.extension() == Some(&OsStr::new("png")))
         .collect::<Vec<PathBuf>>();
 
-    dbg!(all_png_files);
+    let total_file_size_before = all_png_files
+        .iter()
+        .map(|f| std::fs::metadata(f))
+        .flatten()
+        .map(|metadata| metadata.len())
+        .sum::<u64>();
+
+    println!(
+        "Checking {} files of total size: {}",
+        all_png_files.len(),
+        total_file_size_before
+            .file_size(options::CONVENTIONAL)
+            .unwrap()
+    );
 }
 
 /// check that all input paths are present/valid, if not, terminate
@@ -52,5 +66,7 @@ fn validate_input_paths(input_paths: &[PathBuf]) {
             .for_each(|p| eprint!("{}, ", p.display()));
         eprintln!();
         std::process::exit(1);
+    } else {
+        eprintln!("no <path> argument supplied. try '.' for current directory");
     }
 }
