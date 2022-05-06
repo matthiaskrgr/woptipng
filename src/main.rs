@@ -1,10 +1,8 @@
 use clap::Parser;
-use clap::{AppSettings, Arg, ArgMatches};
 use humansize::{file_size_opts as options, FileSize};
 use walkdir::WalkDir;
 
 use std::ffi::OsStr;
-use std::fs::File;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -30,17 +28,15 @@ fn main() {
 
     let all_png_files = input_paths
         .iter()
-        .map(|path| WalkDir::new(path).into_iter().filter_map(|e| e.ok()))
-        .flatten()
+        .flat_map(|path| WalkDir::new(path).into_iter().filter_map(|e| e.ok()))
         .map(|f| f.into_path())
         // collect all .png files
-        .filter(|file| file.extension() == Some(&OsStr::new("png")))
+        .filter(|file| file.extension() == Some(OsStr::new("png")))
         .collect::<Vec<PathBuf>>();
 
     let total_file_size_before = all_png_files
         .iter()
-        .map(|f| std::fs::metadata(f))
-        .flatten()
+        .flat_map(std::fs::metadata)
         .map(|metadata| metadata.len())
         .sum::<u64>();
 
