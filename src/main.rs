@@ -1,6 +1,7 @@
 use clap::Parser;
 use humansize::{file_size_opts as options, FileSize};
 use image::{open, GenericImage, GenericImageView, ImageBuffer};
+use tempfile;
 use walkdir::WalkDir;
 
 use std::ffi::OsStr;
@@ -100,4 +101,78 @@ fn images_are_identical(image1: &PathBuf, image2: &PathBuf) -> bool {
     let pixels_2 = image_2.pixels();
 
     pixels_1.eq(pixels_2)
+}
+
+fn verify_image(original_image: &PathBuf, new_image: &PathBuf) {
+    let pixel_identical: bool = images_are_identical(original_image, new_image);
+
+    let image_got_smaller: bool = std::fs::metadata(original_image).unwrap().len()
+        > std::fs::metadata(new_image).unwrap().len();
+
+    match (pixel_identical, image_got_smaller) {
+        (true, true) => { // jackpot, overwrite old with new}
+        }
+        (true, false) => {
+            // image didn't get samller, bad
+        }
+        (false, true) => { // image was altered, BAD; don't overwrite/rollback
+        }
+        (false, false) => {
+            // wtf!
+            panic!();
+        }
+    }
+}
+
+struct Image<'a> {
+    path: &'a PathBuf,
+}
+
+impl<'a> Image<'a> {
+    fn run_imagemagick(&self, tmp_path: &PathBuf) -> bool {
+        // copy files
+        std::fs::copy(&self.path, tmp_path).expect("failed to copy");
+        let mut cmd = Command::new(exec_imagemagic);
+        cmd.args(["-strip", "-define", "png:color-type=6"])
+            .args([self.path, tmp_path]);
+
+        // do not discard output
+        cmd.status().unwrap().success()
+    }
+
+    fn run_optipng(&self, tmp_path: &PathBuf) -> bool {
+        // copy files
+        std::fs::copy(&self.path, tmp_path).expect("failed to copy");
+        let mut cmd = Command::new(exec_optipng);
+        cmd.args(["-q", "-o5", "-nb", "-nc", "-np"]).arg(tmp_path);
+
+        // do not discard output
+        cmd.status().unwrap().success()
+    }
+
+    fn run_advpng(&self, tmp_path: &PathBuf) -> bool {
+        const COMPRESSION_LEVELS: &[u8] = &[1, 2, 3, 4];
+
+        let v = COMPRESSION_LEVELS
+            .iter()
+            .map(|lvl| {
+                let mut cmd = Command::new(exec_advpng);
+                cmd.arg("-z").arg(format!("-{}", lvl)).arg(tmp_path);
+                // discard output
+                cmd.output().unwrap().status.success()
+            })
+            .collect::<Vec<bool>>();
+
+        v.into_iter().all(|v| v == true)
+    }
+
+    fn run_oxipng(&self, tmp_path: &PathBuf) -> bool {
+        // copy files
+        std::fs::copy(&self.path, tmp_path).expect("failed to copy");
+        let mut cmd = Command::new(exec_oxipng);
+        cmd.args(["--nc", "--np", "-o6", "--quiet"]).arg(tmp_path);
+
+        // discard output
+        cmd.output().unwrap().status.success()
+    }
 }
