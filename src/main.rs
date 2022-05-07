@@ -7,6 +7,7 @@ use walkdir::WalkDir;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::process::Command;
+use std::time::Instant;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -223,6 +224,7 @@ impl<'a> Image<'a> {
         }
     }
     fn optimize(&mut self) {
+        let start_time = Instant::now();
         let original_size = std::fs::metadata(&self.path).unwrap().len();
         let mut iteration = 0;
 
@@ -265,19 +267,29 @@ impl<'a> Image<'a> {
 
         let size_delta = size_after as i64 - original_size as i64;
         let perc_delta = (size_delta as f64 / original_size as f64) * 100_f64;
-        println!(
-            "optimized {}, from {}b to {}b, {}b / {}%",
-            self.path.display(),
-            original_size,
-            size_after,
-            size_delta,
-            {
-                let mut t: String = format!("{}", perc_delta);
-                if t.len() > 4 {
-                    t = t[0..3].to_string();
-                };
-                t
-            },
-        )
+        let seconds_elapsed = start_time.elapsed().as_secs();
+        if size_delta == 0 {
+            println!(
+                "could not optimize {} in {}s",
+                self.path.display(),
+                seconds_elapsed
+            );
+        } else {
+            println!(
+                "optimized {}, from {}b to {}b, {}b / {}% in {}s",
+                self.path.display(),
+                original_size,
+                size_after,
+                size_delta,
+                {
+                    let mut t: String = format!("{}", perc_delta);
+                    if t.len() > 4 {
+                        t = t[0..5].to_string();
+                    };
+                    t
+                },
+                seconds_elapsed,
+            )
+        }
     }
 }
