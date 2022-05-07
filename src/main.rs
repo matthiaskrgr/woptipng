@@ -199,15 +199,17 @@ impl<'a> Image<'a> {
         cmd.output().unwrap().status.success()
     }
 
-    fn verify_image(&mut self, backup_image: &PathBuf, threshold: u8) {
+    fn verify_image(&mut self, backup_image: &PathBuf, _threshold: u8) {
         let pixel_identical: bool = images_are_identical(self.path, backup_image);
 
         let size_new = std::fs::metadata(self.path).unwrap().len();
         let size_old = std::fs::metadata(backup_image).unwrap().len();
-        let size_difference = size_old as i64 - size_new as i64;
-        let perc_difference = (size_difference / size_old as i64) * 100;
 
-        let image_got_smaller: bool = (size_new < size_old) && perc_difference >= threshold as i64;
+        //  dbg!((size_new, size_old));
+        let size_difference = size_old as i64 - size_new as i64;
+        let perc_difference = ((size_difference as f32 / size_old as f32) * 100_f32) as i32;
+
+        let image_got_smaller: bool = (size_new < size_old);
 
         match (pixel_identical, image_got_smaller) {
             (true, true) => {
@@ -215,12 +217,15 @@ impl<'a> Image<'a> {
                 std::fs::copy(self.path, backup_image).unwrap();
             }
             (true, false) => {
+                /* println!(
+                    "failed to optimize rolling back: {} => {}",
+                    size_old, size_new
+                ); */
                 std::fs::copy(backup_image, self.path).unwrap();
-                //println!("failed to optimize: {} => {}", size_old, size_new);
             }
             (false, true) => {
                 // image was altered, BAD; don't overwrite, dorollback
-                println!("image altered! :(");
+                println!("image altered! :(  rolling back");
                 std::fs::copy(backup_image, self.path).unwrap();
             }
             (false, false) => {
@@ -267,19 +272,23 @@ impl<'a> Image<'a> {
 
         let size_after = std::fs::metadata(&self.path).unwrap().len();
 
+        // dbg!((size_before, size_after));
         let size_delta = size_after as i64 - original_size as i64;
         let perc_delta = (size_delta as f64 / original_size as f64) * 100_f64;
         let seconds_elapsed = start_time.elapsed().as_secs();
-        if dbg!(size_delta) == 0 {
+        if size_delta == 0 {
             println!(
                 "could not optimize {} in {}s",
                 self.path.display(),
                 seconds_elapsed
             );
-        } else if dbg!(perc_delta) < 5 as f64 {
+        } else if perc_delta < threshold as f64 {
             println!(
-                "could not reach optimization threshold {} : got {}",
-                threshold, size_delta
+                "could not reach optimization threshold -{}% : got {}  {}b -> {}b ",
+                threshold,
+                perc_delta.to_string().chars().take(5).collect::<String>(),
+                original_size,
+                size_after
             );
             // revert the file
             std::fs::copy(tmp_path, self.path).unwrap();
