@@ -208,7 +208,8 @@ impl<'a> Image<'a> {
                 std::fs::copy(self.path, backup_image).unwrap();
             }
             (true, false) => {
-                //println!("failed to optimize: {} to {}", size_old, size_new);
+                std::fs::copy(backup_image, self.path).unwrap();
+                //println!("failed to optimize: {} => {}", size_old, size_new);
             }
             (false, true) => {
                 // image was altered, BAD; don't overwrite, dorollback
