@@ -5,10 +5,11 @@ use rayon::prelude::*;
 use walkdir::WalkDir;
 
 use std::ffi::OsStr;
+use std::fs::File;
+use std::io::prelude::*;
 use std::path::PathBuf;
 use std::process::Command;
 use std::time::Instant;
-
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
@@ -206,7 +207,7 @@ impl<'a> Image<'a> {
         let size_old = std::fs::metadata(backup_image).unwrap().len();
 
         //  dbg!((size_new, size_old));
-        let size_difference = size_old as i64 - size_new as i64;
+        let mut size_difference = size_old as i64 - size_new as i64;
         let perc_difference = ((size_difference as f32 / size_old as f32) * 100_f32) as i32;
 
         let image_got_smaller: bool = (size_new < size_old);
@@ -235,6 +236,7 @@ impl<'a> Image<'a> {
         }
     }
     fn optimize(&mut self, threshold: u8) {
+        let original_file = std::fs::read(self.path).unwrap();
         let start_time = Instant::now();
         let original_size = std::fs::metadata(&self.path).unwrap().len();
         let mut iteration = 0;
@@ -282,16 +284,21 @@ impl<'a> Image<'a> {
                 self.path.display(),
                 seconds_elapsed
             );
-        } else if perc_delta < threshold as f64 {
+            let mut file = std::fs::File::create(self.path).unwrap();
+            file.write_all(&original_file).unwrap();
+        } else if perc_delta.abs() < threshold as f64 {
             println!(
-                "could not reach optimization threshold -{}% : got {}  {}b -> {}b ",
+                "could not reach optimization threshold {}%, got: {}  {}b -> {}b ",
                 threshold,
                 perc_delta.to_string().chars().take(5).collect::<String>(),
                 original_size,
                 size_after
             );
             // revert the file
-            std::fs::copy(tmp_path, self.path).unwrap();
+            std::fs::copy(&tmp_path, self.path).unwrap();
+            let mut file = std::fs::File::create(self.path).unwrap();
+            file.write_all(&original_file).unwrap();
+            //   std::fs::remove_file(&tmp_path).unwrap()
         } else {
             println!(
                 "optimized {}, from {}b to {}b, {}b / {}% in {}s",
@@ -308,6 +315,9 @@ impl<'a> Image<'a> {
                 },
                 seconds_elapsed,
             )
+        }
+        if tmp_path.exists() {
+            std::fs::remove_file(&tmp_path).unwrap()
         }
     }
 }
