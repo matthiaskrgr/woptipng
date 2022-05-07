@@ -264,22 +264,25 @@ impl<'a> Image<'a> {
 
             size_after = std::fs::metadata(&self.path).unwrap().len();
         }
-        if tmp_path.exists() {
-            // clean up
-            std::fs::remove_file(tmp_path).unwrap();
-        }
 
         let size_after = std::fs::metadata(&self.path).unwrap().len();
 
         let size_delta = size_after as i64 - original_size as i64;
         let perc_delta = (size_delta as f64 / original_size as f64) * 100_f64;
         let seconds_elapsed = start_time.elapsed().as_secs();
-        if size_delta == 0 {
+        if dbg!(size_delta) == 0 {
             println!(
                 "could not optimize {} in {}s",
                 self.path.display(),
                 seconds_elapsed
             );
+        } else if dbg!(perc_delta) < 5 as f64 {
+            println!(
+                "could not reach optimization threshold {} : got {}",
+                threshold, size_delta
+            );
+            // revert the file
+            std::fs::copy(tmp_path, self.path).unwrap();
         } else {
             println!(
                 "optimized {}, from {}b to {}b, {}b / {}% in {}s",
