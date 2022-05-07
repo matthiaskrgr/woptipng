@@ -30,7 +30,17 @@ static EXEC_OXIPNG: &str = "oxipng";
 
 fn main() {
     let cli = Args::parse();
-    let input_paths = cli.paths.iter().map(PathBuf::from).collect::<Vec<_>>();
+    let input_paths = cli
+        .paths
+        .iter()
+        .map(|p| {
+            if p == "." {
+                std::env::current_dir().unwrap()
+            } else {
+                PathBuf::from(p)
+            }
+        })
+        .collect::<Vec<_>>();
 
     validate_input_paths(&input_paths);
 
@@ -94,8 +104,9 @@ fn validate_input_paths(input_paths: &[PathBuf]) {
             .for_each(|p| eprint!("{}, ", p.display()));
         eprintln!();
         std::process::exit(1);
-    } else {
+    } else if input_paths.is_empty() {
         eprintln!("no <path> argument supplied. try '.' for current directory");
+        std::process::exit(4);
     }
 }
 
@@ -142,7 +153,7 @@ impl<'a> Image<'a> {
         ));
         let mut cmd = Command::new(EXEC_IMAGEMAGIC);
         cmd.args(["-strip", "-define", "png:color-type=6"])
-            .args([self.path, tmp_path]);
+            .args([tmp_path, self.path]);
 
         // do not discard output
         cmd.status().unwrap().success()
@@ -152,7 +163,7 @@ impl<'a> Image<'a> {
         // copy files
         std::fs::copy(&self.path, tmp_path).expect("failed to copy");
         let mut cmd = Command::new(EXEC_OPTIPNG);
-        cmd.args(["-q", "-o5", "-nb", "-nc", "-np"]).arg(tmp_path);
+        cmd.args(["-q", "-o5", "-nb", "-nc", "-np"]).arg(self.path);
 
         // do not discard output
         cmd.status().unwrap().success()
@@ -165,7 +176,7 @@ impl<'a> Image<'a> {
             .iter()
             .map(|lvl| {
                 let mut cmd = Command::new(EXEC_ADVPNG);
-                cmd.arg("-z").arg(format!("-{}", lvl)).arg(tmp_path);
+                cmd.arg("-z").arg(format!("-{}", lvl)).arg(self.path);
                 // discard output
                 cmd.output().unwrap().status.success()
             })
@@ -178,7 +189,7 @@ impl<'a> Image<'a> {
         // copy files
         std::fs::copy(&self.path, tmp_path).expect("failed to copy");
         let mut cmd = Command::new(EXEC_OXIPNG);
-        cmd.args(["--nc", "--np", "-o6", "--quiet"]).arg(tmp_path);
+        cmd.args(["--nc", "--np", "-o6", "--quiet"]).arg(self.path);
 
         // discard output
         cmd.output().unwrap().status.success()
@@ -225,8 +236,7 @@ impl<'a> Image<'a> {
 
         let mut size_before = original_size;
         let mut size_after = 0;
-        let mut perc_delta: f64 = 0.0;
-        let mut size_delta: i64 = 0;
+
         while size_before > size_after || iteration == 0 {
             iteration += 1;
             size_before = std::fs::metadata(&self.path).unwrap().len();
@@ -244,16 +254,18 @@ impl<'a> Image<'a> {
             self.verify_image(&tmp_path);
 
             size_after = std::fs::metadata(&self.path).unwrap().len();
-            size_delta = size_after as i64 - size_before as i64;
-            perc_delta = (size_delta as f64 / size_before as f64) * 100_f64;
         }
         if tmp_path.exists() {
             // clean up
             std::fs::remove_file(tmp_path).unwrap();
         }
 
+        let size_after = std::fs::metadata(&self.path).unwrap().len();
+
+        let size_delta = size_after as i64 - original_size as i64;
+        let perc_delta = (size_delta as f64 / original_size as f64) * 100_f64;
         println!(
-            "optimized {}, from {}b to {}b, {}, {}",
+            "optimized {}, from {}b to {}b, {}b / {}%",
             self.path.display(),
             original_size,
             size_after,
