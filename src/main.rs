@@ -184,23 +184,25 @@ impl<'a> Image<'a> {
         cmd.output().unwrap().status.success()
     }
 
-    fn verify_image(&mut self, new_image: &PathBuf) {
-        let pixel_identical: bool = images_are_identical(self.path, new_image);
+    fn verify_image(&mut self, backup_image: &PathBuf) {
+        let pixel_identical: bool = images_are_identical(self.path, backup_image);
 
-        let image_got_smaller: bool = std::fs::metadata(self.path).unwrap().len()
-            < std::fs::metadata(new_image).unwrap().len();
+        let size_new = std::fs::metadata(self.path).unwrap().len();
+        let size_old = std::fs::metadata(backup_image).unwrap().len();
+        let image_got_smaller: bool = size_new < size_old;
 
         match (pixel_identical, image_got_smaller) {
             (true, true) => {
-                std::fs::copy(new_image, self.path).unwrap();
+                // if we got smaller, overwrite backup with smaller version
+                std::fs::copy(self.path, backup_image).unwrap();
             }
             (true, false) => {
-                //println!("failed to optimiized")
+                //println!("failed to optimize: {} to {}", size_old, size_new);
             }
             (false, true) => {
-                // image was altered, BAD; don't overwrite/rollback
+                // image was altered, BAD; don't overwrite, dorollback
                 println!("image altered! :(");
-                std::fs::copy(self.path, new_image).unwrap();
+                std::fs::copy(backup_image, self.path).unwrap();
             }
             (false, false) => {
                 // wtf!
@@ -251,12 +253,18 @@ impl<'a> Image<'a> {
         }
 
         println!(
-            "optimized {},from {} to {}, {}, {}",
+            "optimized {}, from {}b to {}b, {}, {}",
             self.path.display(),
             original_size,
             size_after,
             size_delta,
-            perc_delta
+            {
+                let mut t: String = format!("{}", perc_delta);
+                if t.len() > 4 {
+                    t = t[0..3].to_string();
+                };
+                t
+            },
         )
     }
 }
