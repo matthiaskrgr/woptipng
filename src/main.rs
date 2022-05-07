@@ -15,7 +15,7 @@ struct Args {
     #[clap(short, long)]
     debug: bool,
 
-    #[clap(short, long, default_value_t = 1)]
+    #[clap(short, long, default_value_t = 30)]
     threshold: u8,
 
     #[clap(short, long, default_value_t = 0)]
@@ -30,7 +30,10 @@ static EXEC_ADVPNG: &str = "advpng";
 static EXEC_OXIPNG: &str = "oxipng";
 
 fn main() {
+    let total_time = Instant::now();
     let cli = Args::parse();
+    let optimizsation_threshold: u8 = cli.threshold;
+
     let input_paths = cli
         .paths
         .iter()
@@ -73,23 +76,23 @@ fn main() {
     all_png_files
         .par_iter()
         .map(Image::new)
-        .for_each(|mut img| img.optimize());
+        .for_each(|mut img| img.optimize(optimizsation_threshold));
 
-    let total_file_size_after = all_png_files
+    let total_file_size_after: u64 = all_png_files
         .iter()
         .flat_map(std::fs::metadata)
         .map(|metadata| metadata.len())
         .sum::<u64>();
 
     println!(
-        "Reduced size of  {} files to a total size of: {}",
+        "Reduced size of  {} files to a total size of: {} ({}) in {}s",
         all_png_files.len(),
         total_file_size_after
             .file_size(options::CONVENTIONAL)
-            .unwrap()
+            .unwrap(),
+        total_file_size_after as i64 - total_file_size_before as i64,
+        total_time.elapsed().as_secs()
     );
-
-    println!("{}", total_file_size_after - total_file_size_before);
 }
 
 /// check that all input paths are present/valid, if not, terminate
@@ -196,12 +199,15 @@ impl<'a> Image<'a> {
         cmd.output().unwrap().status.success()
     }
 
-    fn verify_image(&mut self, backup_image: &PathBuf) {
+    fn verify_image(&mut self, backup_image: &PathBuf, threshold: u8) {
         let pixel_identical: bool = images_are_identical(self.path, backup_image);
 
         let size_new = std::fs::metadata(self.path).unwrap().len();
         let size_old = std::fs::metadata(backup_image).unwrap().len();
-        let image_got_smaller: bool = size_new < size_old;
+        let size_difference = size_old as i64 - size_new as i64;
+        let perc_difference = (size_difference / size_old as i64) * 100;
+
+        let image_got_smaller: bool = (size_new < size_old) && perc_difference >= threshold as i64;
 
         match (pixel_identical, image_got_smaller) {
             (true, true) => {
@@ -223,7 +229,7 @@ impl<'a> Image<'a> {
             }
         }
     }
-    fn optimize(&mut self) {
+    fn optimize(&mut self, threshold: u8) {
         let start_time = Instant::now();
         let original_size = std::fs::metadata(&self.path).unwrap().len();
         let mut iteration = 0;
@@ -245,16 +251,16 @@ impl<'a> Image<'a> {
             size_before = std::fs::metadata(&self.path).unwrap().len();
 
             self.run_imagemagick(&tmp_path);
-            self.verify_image(&tmp_path);
+            self.verify_image(&tmp_path, threshold);
 
             self.run_optipng(&tmp_path);
-            self.verify_image(&tmp_path);
+            self.verify_image(&tmp_path, threshold);
 
             self.run_advpng(&tmp_path);
-            self.verify_image(&tmp_path);
+            self.verify_image(&tmp_path, threshold);
 
             self.run_oxipng(&tmp_path);
-            self.verify_image(&tmp_path);
+            self.verify_image(&tmp_path, threshold);
 
             size_after = std::fs::metadata(&self.path).unwrap().len();
         }
